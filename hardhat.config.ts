@@ -49,5 +49,4 @@ module.exports = {
       amoy: process.env.AMOY_APIKEY!
     }
   },
-
 };

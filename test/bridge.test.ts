@@ -11,7 +11,7 @@ describe("Wormhole bridge", async function () {
         const CORE_CONTRACT = "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35";
         const CHAIN_ID = chainToChainId("Polygon");
 
-        const [owner, otherAccount] = await ethers.getSigners();
+        // const [owner, otherAccount] = await ethers.getSigners();
         const wormhole = await ethers.getContractFactory("Wormhole");
         const wormholeContract = await wormhole.deploy(CORE_CONTRACT, CHAIN_ID, 1);
 
