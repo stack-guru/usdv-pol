@@ -1,6 +1,9 @@
+import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-toolbox";
-
 /** @type import('hardhat/config').HardhatUserConfig */
+import * as dotenv from "dotenv";
+dotenv.config();
+
 module.exports = {
   solidity: {
     version: "0.8.28",
@@ -28,5 +31,23 @@ module.exports = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts"
-  }
+  },
+  defaultNetwork: "amoy",
+  networks: {
+    amoy: {
+      url: "https://polygon-amoy-bor-rpc.publicnode.com",
+      accounts: [process.env.PRIVATE_KEY!]
+    },
+    polygon: {
+      url: "https://polygon-rpc.com",
+      accounts: [process.env.PRIVATE_KEY!]
+    }
+  },
+  etherscan: {
+    apiKey: {
+      polygon: process.env.POLYGON_APIKEY!,
+      amoy: process.env.AMOY_APIKEY!
+    }
+  },
+
 };
