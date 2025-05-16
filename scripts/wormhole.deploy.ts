@@ -4,18 +4,18 @@ dotenv.config();
 
 // deploy test womrhole on amoy
 async function main() {
-  const wormholeAddress = "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35";
-  const chainId = 5;
-  const wormholeFinality = 1;
+    const wormholeAddress = "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35";
+    const chainId = 5;
+    const wormholeFinality = 1;
 
-  const Wormhole = await ethers.getContractFactory("Wormhole");
-  const wormhole = await Wormhole.deploy(wormholeAddress, chainId, wormholeFinality);
+    const Wormhole = await ethers.getContractFactory("Wormhole");
+    const wormhole = await Wormhole.deploy(wormholeAddress, chainId, wormholeFinality);
 
-  await wormhole.deployed();
-  console.log("Wormhole deployed to:", wormhole.address);
+    console.log('deployed wormhole = ', wormhole);
+    console.log("Wormhole deployed to:", wormhole.address);
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+    console.error(error);
+    process.exitCode = 1;
 });

@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-verify";
+import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-toolbox";
 /** @type import('hardhat/config').HardhatUserConfig */
 import * as dotenv from "dotenv";
@@ -46,7 +47,7 @@ module.exports = {
   etherscan: {
     apiKey: {
       polygon: process.env.POLYGON_APIKEY!,
-      amoy: process.env.AMOY_APIKEY!
+      polygonAmoy: process.env.AMOY_APIKEY!
     }
   },
 };
