@@ -19,6 +19,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@certusone/wormhole-sdk": "^0.10.18",
     "@openzeppelin/contracts": "^5.0.2",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@wormhole-foundation/sdk": "^1.18.0",
