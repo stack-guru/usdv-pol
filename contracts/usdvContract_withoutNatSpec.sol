@@ -12,6 +12,12 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./interfaces/ISlayer.sol";
 
+// bridge
+import "./bridge/modules/wormhole/IWormhole.sol";
+import "./bridge/modules/utils/BytesLib.sol";
+import "./bridge/WormholeGetters.sol";
+import "./bridge/WormholeMessages.sol";
+
 /// @notice ChainLink Aggregator interfaces used for getting BTC ve ETH prices in real time
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
@@ -20,7 +26,9 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         external
         view
         returns (
@@ -56,7 +64,9 @@ contract USDVContract is
     ERC20PausableUpgradeable,
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    WormholeGetters,
+    WormholeMessages
 {
     using SafeCast for int256;
 
@@ -184,6 +194,7 @@ contract USDVContract is
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         minBurnAmount = 1000000;
         burnFee = 0;
@@ -206,6 +217,11 @@ contract USDVContract is
 
         checkINFrequency = 1 days;
         checkINEarnRate = 10000;
+
+        //bridge
+        setWormhole(address(0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35));
+        setChainId(10007);
+        setWormholeFinality(1);
     }
 
     function mintToken(uint256 _amount) external nonReentrant whenNotPaused {
@@ -224,7 +240,7 @@ contract USDVContract is
         uint256 amountTransfered = AfterBalance_1 - beforeBalance_1;
 
         uint256 _tax = (amountTransfered * mintFeePercent) / BASIS_POINTS;
-        uint256 _tokenAmountToMint = (amountTransfered * 10**6) / tokenPrice;
+        uint256 _tokenAmountToMint = (amountTransfered * 10 ** 6) / tokenPrice;
         require(_tokenAmountToMint > minusMint, "Problem 1");
 
         require(
@@ -251,7 +267,7 @@ contract USDVContract is
             require(msg.sender == owner(), "Not Authorized");
         }
 
-        uint256 _tokenAmountToTransfer = (_amount * tokenPrice) / 10**6;
+        uint256 _tokenAmountToTransfer = (_amount * tokenPrice) / 10 ** 6;
         if (currencyToken.balanceOf(address(this)) >= _tokenAmountToTransfer) {
             require(
                 currencyToken.transfer(msg.sender, _tokenAmountToTransfer),
@@ -294,7 +310,7 @@ contract USDVContract is
             userTotalCheckINs[msg.sender]++;
             totalEarnsForUser[msg.sender] =
                 totalEarnsForUser[msg.sender] +
-                (((10**6) * checkINEarnRate) / BASIS_POINTS);
+                (((10 ** 6) * checkINEarnRate) / BASIS_POINTS);
 
             userCheckINTimestamps[msg.sender][
                 userCheckInCounter[msg.sender]++
@@ -302,7 +318,7 @@ contract USDVContract is
             emit checkINEvent(
                 msg.sender,
                 _tmpCheck,
-                (((10**6) * checkINEarnRate) / BASIS_POINTS),
+                (((10 ** 6) * checkINEarnRate) / BASIS_POINTS),
                 totalEarnsForUser[msg.sender],
                 block.timestamp,
                 checkINEarnRate
@@ -347,9 +363,9 @@ contract USDVContract is
             revert("Old Price Feed");
         }
         uint256 phoenixUSDTPrice = (assetPriceETH * (answer.toUint256())) /
-            10**20;
-        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10**6;
-        uint256 value = (usdvPriceInUSDT * 10**6) / phoenixUSDTPrice;
+            10 ** 20;
+        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10 ** 6;
+        uint256 value = (usdvPriceInUSDT * 10 ** 6) / phoenixUSDTPrice;
         uint256 ownerTax = (value * exchange_1_TreasuryFeePercent) /
             BASIS_POINTS;
         uint256 LPTax = (value * exchange_1_LPFeePercent) / BASIS_POINTS;
@@ -393,9 +409,9 @@ contract USDVContract is
             revert("Old Price Feed");
         }
         uint256 heavenUSDTPrice = (assetPriceBTC * (answer.toUint256())) /
-            10**10;
-        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10**6;
-        uint256 value = (usdvPriceInUSDT * 10**6) / heavenUSDTPrice;
+            10 ** 10;
+        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10 ** 6;
+        uint256 value = (usdvPriceInUSDT * 10 ** 6) / heavenUSDTPrice;
         uint256 ownerTax = (value * exchange_2_TreasuryFeePercent) /
             BASIS_POINTS;
         uint256 LPTax = (value * exchange_2_LPFeePercent) / BASIS_POINTS;
@@ -424,7 +440,9 @@ contract USDVContract is
         }
     }
 
-    function getChainlinkDataFeedLatestAnswer(bool BtcOrEth)
+    function getChainlinkDataFeedLatestAnswer(
+        bool BtcOrEth
+    )
         public
         view
         whenNotPaused
@@ -514,10 +532,10 @@ contract USDVContract is
         tokenPrice = _newPrice;
     }
 
-    function updateWhiteList(address _address, bool _newStatus)
-        external
-        onlyOwner
-    {
+    function updateWhiteList(
+        address _address,
+        bool _newStatus
+    ) external onlyOwner {
         require(_address != address(0), "Problem");
         whiteListed[_address] = _newStatus;
     }
@@ -577,20 +595,18 @@ contract USDVContract is
         isExchange_2_Open = _newStatus;
     }
 
-    function withdrawFundsERC20(address erc20, uint256 amount)
-        external
-        onlyOwner
-    {
+    function withdrawFundsERC20(
+        address erc20,
+        uint256 amount
+    ) external onlyOwner {
         if (IERC20Extented(erc20).balanceOf(address(this)) >= amount) {
             IERC20Extented(erc20).transfer(msg.sender, amount);
         }
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyOwner
-    {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
 
     function _update(
         address from,
@@ -608,5 +624,100 @@ contract USDVContract is
         }
 
         super._update(from, to, amount);
+    }
+
+    // bridge
+    function registerEmitter(
+        uint16 emitterChainId,
+        bytes32 emitterAddress
+    ) public onlyOwner {
+        // sanity check the emitterChainId and emitterAddress input values
+        require(
+            emitterChainId != 0 && emitterChainId != chainId(),
+            "emitterChainId cannot equal 0 or this chainId"
+        );
+        require(
+            emitterAddress != bytes32(0),
+            "emitterAddress cannot equal bytes32(0)"
+        );
+
+        // update the registeredEmitters state variable
+        setEmitter(emitterChainId, emitterAddress);
+    }
+
+    function verifyEmitter(
+        IWormhole.VM memory vm
+    ) internal view returns (bool) {
+        // Verify that the sender of the Wormhole message is a trusted
+        // Wormhole contract.
+        return getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress;
+    }
+
+    function sendMessage(
+        string memory wormholeMessage
+    ) public payable returns (uint64 messageSequence) {
+        // enforce a max size for the arbitrary message
+        require(
+            abi.encodePacked(wormholeMessage).length < type(uint16).max,
+            "message too large"
+        );
+
+        // cache Wormhole instance and fees to save on gas
+        IWormhole wormhole = wormhole();
+        uint256 wormholeFee = wormhole.messageFee();
+
+        // Confirm that the caller has sent enough value to pay for the Wormhole
+        // message fee.
+        require(msg.value == wormholeFee, "insufficient value");
+
+        // create the WormholeMessage struct
+        WormholeMessage memory parsedMessage = WormholeMessage({
+            payloadID: uint8(1),
+            message: wormholeMessage
+        });
+
+        // encode the WormholeMessage struct into bytes
+        bytes memory encodedMessage = encodeMessage(parsedMessage);
+
+        // Send the Wormhole message by calling publishMessage on the
+        // Wormhole core contract and paying the Wormhole protocol fee.
+        messageSequence = wormhole.publishMessage{value: wormholeFee}(
+            0, // batchID
+            encodedMessage,
+            wormholeFinality()
+        );
+    }
+
+    function receiveMessage(bytes memory encodedMessage) public {
+        // call the Wormhole core contract to parse and verify the encodedMessage
+        (
+            IWormhole.VM memory wormholeMessage,
+            bool valid,
+            string memory reason
+        ) = wormhole().parseAndVerifyVM(encodedMessage);
+
+        // confirm that the Wormhole core contract verified the message
+        require(valid, reason);
+
+        // verify that this message was emitted by a registered emitter
+        require(verifyEmitter(wormholeMessage), "unknown emitter");
+
+        // decode the message payload into the WormholeMessage struct
+        WormholeMessage memory parsedMessage = decodeMessage(
+            wormholeMessage.payload
+        );
+
+        /**
+         * Check to see if this message has been consumed already. If not,
+         * save the parsed message in the receivedMessages mapping.
+         *
+         * This check can protect against replay attacks in xDapps where messages are
+         * only meant to be consumed once.
+         */
+        require(
+            !isMessageConsumed(wormholeMessage.hash),
+            "message already consumed"
+        );
+        consumeMessage(wormholeMessage.hash, parsedMessage.message);
     }
 }

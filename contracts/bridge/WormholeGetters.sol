@@ -6,9 +6,9 @@ import "./modules/wormhole/IWormhole.sol";
 import "./WormholeSetters.sol";
 
 contract WormholeGetters is WormholeSetters {
-    function owner() public view returns (address) {
-        return _state.owner;
-    }
+    // function owner() public view returns (address) {
+    //     return _state.owner;
+    // }
 
     function wormhole() public view returns (IWormhole) {
         return IWormhole(_state.wormhole);

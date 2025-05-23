@@ -4,9 +4,9 @@ pragma solidity ^0.8.28;
 import "./WormholeState.sol";
 
 contract WormholeSetters is WormholeState {
-    function setOwner(address owner_) internal {
-        _state.owner = owner_;
-    }
+    // function setOwner(address owner_) internal {
+    //     _state.owner = owner_;
+    // }
 
     function setWormhole(address wormhole_) internal {
         _state.wormhole = payable(wormhole_);

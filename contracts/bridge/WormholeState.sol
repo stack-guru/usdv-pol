@@ -5,8 +5,8 @@ import "./modules/wormhole/IWormhole.sol";
 
 contract WormholeStorage {
     struct State {
-        // owner of this contract
-        address owner;
+        // // owner of this contract
+        // address owner;
 
         // address of the Wormhole contract on this chain
         address wormhole;

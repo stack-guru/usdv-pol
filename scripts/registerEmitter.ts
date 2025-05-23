@@ -2,10 +2,10 @@ import { ethers } from "hardhat";
 import * as dotenv from "dotenv";
 import { CHAIN_ID_SOLANA } from "@certusone/wormhole-sdk";
 import { tryNativeToHexString } from "@certusone/wormhole-sdk";
-import ABI from "../artifacts/contracts/bridge/Wormhole.sol/Wormhole.json";
+import ABI from "../artifacts/contracts/usdvContract_withoutNatSpec.sol/USDVContract.json";
 dotenv.config();
 
-const contractAddress = "0x8bAE1a1C5EE36998ba675e87A626FE168A57dD86";
+const contractAddress = "0x1EC558Fd542d354B7818A8A8F8124b6e39F015B9";
 const solana_address = process.env.SOLANA_ADDRESS || "";
 
 const main = async () => {
