@@ -1,7 +1,7 @@
 import { ethers, upgrades } from "hardhat";
 
 async function main() {
-    const proxyAddress = "0xb324C9131f312FA7CA9698507eeD5B06af839CB6";
+    const proxyAddress = "0x76893C6Bf3BDD5A61dD1988AfA1b43A51F95A42c";
 
     const ContractV2 = await ethers.getContractFactory("USDVContractV2");
     const upgraded = await upgrades.upgradeProxy(proxyAddress, ContractV2);
