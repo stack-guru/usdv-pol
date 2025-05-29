@@ -79,7 +79,7 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
         );
     }
 
-    function receiveMessage(bytes memory encodedMessage) public {
+    function receiveMessage(bytes memory encodedMessage, bytes32 vaaHash) public {
         // call the Wormhole core contract to parse and verify the encodedMessage
         (
             IWormhole.VM memory wormholeMessage,
@@ -106,9 +106,9 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
          * only meant to be consumed once.
          */
         require(
-            !isMessageConsumed(wormholeMessage.hash),
+            !isMessageConsumed(vaaHash),
             "message already consumed"
         );
-        consumeMessage(wormholeMessage.hash, parsedMessage.message);
+        consumeMessage(vaaHash, parsedMessage.message);
     }
 }
