@@ -20,7 +20,9 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         external
         view
         returns (
@@ -179,11 +181,16 @@ contract USDVContract is
     }
 
     function initialize() public initializer {
+        __USDVContract_init();
+    }
+
+    function __USDVContract_init() internal onlyInitializing {
         __ERC20_init("USDV", "USDV");
         __ERC20Burnable_init();
         __ERC20Pausable_init();
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
 
         minBurnAmount = 1000000;
         burnFee = 0;
@@ -203,7 +210,6 @@ contract USDVContract is
         );
         PhoenixToken = ISlayer(payable(address(0)));
         HeavenToken = ISlayer(payable(address(0)));
-
         checkINFrequency = 1 days;
         checkINEarnRate = 10000;
     }
@@ -224,7 +230,7 @@ contract USDVContract is
         uint256 amountTransfered = AfterBalance_1 - beforeBalance_1;
 
         uint256 _tax = (amountTransfered * mintFeePercent) / BASIS_POINTS;
-        uint256 _tokenAmountToMint = (amountTransfered * 10**6) / tokenPrice;
+        uint256 _tokenAmountToMint = (amountTransfered * 10 ** 6) / tokenPrice;
         require(_tokenAmountToMint > minusMint, "Problem 1");
 
         require(
@@ -251,7 +257,7 @@ contract USDVContract is
             require(msg.sender == owner(), "Not Authorized");
         }
 
-        uint256 _tokenAmountToTransfer = (_amount * tokenPrice) / 10**6;
+        uint256 _tokenAmountToTransfer = (_amount * tokenPrice) / 10 ** 6;
         if (currencyToken.balanceOf(address(this)) >= _tokenAmountToTransfer) {
             require(
                 currencyToken.transfer(msg.sender, _tokenAmountToTransfer),
@@ -294,7 +300,7 @@ contract USDVContract is
             userTotalCheckINs[msg.sender]++;
             totalEarnsForUser[msg.sender] =
                 totalEarnsForUser[msg.sender] +
-                (((10**6) * checkINEarnRate) / BASIS_POINTS);
+                (((10 ** 6) * checkINEarnRate) / BASIS_POINTS);
 
             userCheckINTimestamps[msg.sender][
                 userCheckInCounter[msg.sender]++
@@ -302,7 +308,7 @@ contract USDVContract is
             emit checkINEvent(
                 msg.sender,
                 _tmpCheck,
-                (((10**6) * checkINEarnRate) / BASIS_POINTS),
+                (((10 ** 6) * checkINEarnRate) / BASIS_POINTS),
                 totalEarnsForUser[msg.sender],
                 block.timestamp,
                 checkINEarnRate
@@ -347,9 +353,9 @@ contract USDVContract is
             revert("Old Price Feed");
         }
         uint256 phoenixUSDTPrice = (assetPriceETH * (answer.toUint256())) /
-            10**20;
-        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10**6;
-        uint256 value = (usdvPriceInUSDT * 10**6) / phoenixUSDTPrice;
+            10 ** 20;
+        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10 ** 6;
+        uint256 value = (usdvPriceInUSDT * 10 ** 6) / phoenixUSDTPrice;
         uint256 ownerTax = (value * exchange_1_TreasuryFeePercent) /
             BASIS_POINTS;
         uint256 LPTax = (value * exchange_1_LPFeePercent) / BASIS_POINTS;
@@ -393,9 +399,9 @@ contract USDVContract is
             revert("Old Price Feed");
         }
         uint256 heavenUSDTPrice = (assetPriceBTC * (answer.toUint256())) /
-            10**10;
-        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10**6;
-        uint256 value = (usdvPriceInUSDT * 10**6) / heavenUSDTPrice;
+            10 ** 10;
+        uint256 usdvPriceInUSDT = (_amount * tokenPrice) / 10 ** 6;
+        uint256 value = (usdvPriceInUSDT * 10 ** 6) / heavenUSDTPrice;
         uint256 ownerTax = (value * exchange_2_TreasuryFeePercent) /
             BASIS_POINTS;
         uint256 LPTax = (value * exchange_2_LPFeePercent) / BASIS_POINTS;
@@ -424,7 +430,9 @@ contract USDVContract is
         }
     }
 
-    function getChainlinkDataFeedLatestAnswer(bool BtcOrEth)
+    function getChainlinkDataFeedLatestAnswer(
+        bool BtcOrEth
+    )
         public
         view
         whenNotPaused
@@ -514,10 +522,10 @@ contract USDVContract is
         tokenPrice = _newPrice;
     }
 
-    function updateWhiteList(address _address, bool _newStatus)
-        external
-        onlyOwner
-    {
+    function updateWhiteList(
+        address _address,
+        bool _newStatus
+    ) external onlyOwner {
         require(_address != address(0), "Problem");
         whiteListed[_address] = _newStatus;
     }
@@ -577,20 +585,18 @@ contract USDVContract is
         isExchange_2_Open = _newStatus;
     }
 
-    function withdrawFundsERC20(address erc20, uint256 amount)
-        external
-        onlyOwner
-    {
+    function withdrawFundsERC20(
+        address erc20,
+        uint256 amount
+    ) external onlyOwner {
         if (IERC20Extented(erc20).balanceOf(address(this)) >= amount) {
             IERC20Extented(erc20).transfer(msg.sender, amount);
         }
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyOwner
-    {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
 
     function _update(
         address from,

@@ -8,7 +8,10 @@ import "./bridge/WormholeMessages.sol";
 import "./usdvContract_withoutNatSpec.sol";
 
 contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
+    ///@custom:oz-upgrades-validate-as-initializer
     function initializeV2() public reinitializer(2) {
+        __USDVContract_init();
+
         setWormhole(address(0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35));
         setChainId(10007);
         setWormholeFinality(1);
