@@ -6,8 +6,15 @@ import "./bridge/modules/utils/BytesLib.sol";
 import "./bridge/WormholeGetters.sol";
 import "./bridge/WormholeMessages.sol";
 import "./usdvContract_withoutNatSpec.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
+    event BurntForWUSDV(
+        address user,
+        uint256 amount,
+        uint64 messageSequence
+    );
+
     ///@custom:oz-upgrades-validate-as-initializer
     function initializeV2() public reinitializer(2) {
         __USDVContract_init();
@@ -44,40 +51,83 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
         return getRegisteredEmitter(vm.emitterChainId) == vm.emitterAddress;
     }
 
-    function sendMessage(
-        string memory wormholeMessage
-    ) public payable returns (uint64 messageSequence) {
-        // enforce a max size for the arbitrary message
-        require(
-            abi.encodePacked(wormholeMessage).length < type(uint16).max,
-            "message too large"
+    function burnForWUSDV(
+        uint256 _amount
+    )
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        returns (uint64 messageSequence)
+    {
+        require(_amount > 0);
+        require(balanceOf(msg.sender) >= _amount, "Insufficient balance");
+
+        // Burn the tokens
+        _burn(msg.sender, _amount);
+
+        // Format the message, e.g., "locked 250"
+        string memory wormholeMessage = string(
+            abi.encodePacked("locked ", Strings.toString(_amount))
         );
 
-        // cache Wormhole instance and fees to save on gas
-        IWormhole wormhole = wormhole();
-        uint256 wormholeFee = wormhole.messageFee();
+        // Wormhole instance and fee
+        IWormhole wormholeInstance = wormhole();
+        uint256 wormholeFee = wormholeInstance.messageFee();
 
-        // Confirm that the caller has sent enough value to pay for the Wormhole
-        // message fee.
-        require(msg.value == wormholeFee, "insufficient value");
+        require(msg.value == wormholeFee, "Incorrect Wormhole fee");
 
-        // create the WormholeMessage struct
         WormholeMessage memory parsedMessage = WormholeMessage({
             payloadID: uint8(1),
             message: wormholeMessage
         });
 
-        // encode the WormholeMessage struct into bytes
         bytes memory encodedMessage = encodeMessage(parsedMessage);
 
-        // Send the Wormhole message by calling publishMessage on the
-        // Wormhole core contract and paying the Wormhole protocol fee.
-        messageSequence = wormhole.publishMessage{value: wormholeFee}(
+        // Publish the message
+        messageSequence = wormholeInstance.publishMessage{value: wormholeFee}(
             0, // batchID
             encodedMessage,
             wormholeFinality()
         );
+
+        emit BurntForWUSDV(msg.sender, _amount, messageSequence);
     }
+
+    // function sendMessage(
+    //     string memory wormholeMessage
+    // ) public payable returns (uint64 messageSequence) {
+    //     // enforce a max size for the arbitrary message
+    //     require(
+    //         abi.encodePacked(wormholeMessage).length < type(uint16).max,
+    //         "message too large"
+    //     );
+
+    //     // cache Wormhole instance and fees to save on gas
+    //     IWormhole wormhole = wormhole();
+    //     uint256 wormholeFee = wormhole.messageFee();
+
+    //     // Confirm that the caller has sent enough value to pay for the Wormhole
+    //     // message fee.
+    //     require(msg.value == wormholeFee, "insufficient value");
+
+    //     // create the WormholeMessage struct
+    //     WormholeMessage memory parsedMessage = WormholeMessage({
+    //         payloadID: uint8(1),
+    //         message: wormholeMessage
+    //     });
+
+    //     // encode the WormholeMessage struct into bytes
+    //     bytes memory encodedMessage = encodeMessage(parsedMessage);
+
+    //     // Send the Wormhole message by calling publishMessage on the
+    //     // Wormhole core contract and paying the Wormhole protocol fee.
+    //     messageSequence = wormhole.publishMessage{value: wormholeFee}(
+    //         0, // batchID
+    //         encodedMessage,
+    //         wormholeFinality()
+    //     );
+    // }
 
     function receiveMessage(bytes memory encodedMessage) public {
         // call the Wormhole core contract to parse and verify the encodedMessage
