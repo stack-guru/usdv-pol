@@ -93,7 +93,95 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
             wormholeFinality()
         );
 
-        emit BurntForWUSDV(msg.sender, _amount, _solanaAddress, messageSequence);
+        emit BurntForWUSDV(
+            msg.sender,
+            _amount,
+            _solanaAddress,
+            messageSequence
+        );
+    }
+
+    function receiveAndRedeem(
+        bytes memory encodedMessage
+    ) external nonReentrant whenNotPaused {
+        // call the Wormhole core contract to parse and verify the encodedMessage
+        (
+            IWormhole.VM memory wormholeMessage,
+            bool valid,
+            string memory reason
+        ) = wormhole().parseAndVerifyVM(encodedMessage);
+
+        // confirm that the Wormhole core contract verified the message
+        require(valid, reason);
+
+        // verify that this message was emitted by a registered emitter
+        require(verifyEmitter(wormholeMessage), "unknown emitter");
+
+        // decode the message payload into the WormholeMessage struct
+        WormholeMessage memory parsedMessage = decodeMessage(
+            wormholeMessage.payload
+        );
+
+        /**
+         * Check to see if this message has been consumed already. If not,
+         * save the parsed message in the receivedMessages mapping.
+         *
+         * This check can protect against replay attacks in xDapps where messages are
+         * only meant to be consumed once.
+         */
+        require(
+            !isMessageConsumed(wormholeMessage.hash),
+            "message already consumed"
+        );
+        consumeMessage(wormholeMessage.hash, parsedMessage.message);
+
+        uint256 amountToBurn = stringToUint(parsedMessage.message);
+
+        if (!isPublicRedeemOpen) {
+            require(msg.sender == owner(), "Not Authorized");
+        }
+
+        uint256 tokenAmountToTransfer = (amountToBurn * tokenPrice) / 10 ** 6;
+
+        if (currencyToken.balanceOf(address(this)) >= tokenAmountToTransfer) {
+            require(
+                currencyToken.transfer(msg.sender, tokenAmountToTransfer),
+                "Transfer failed"
+            );
+
+            _burn(msg.sender, amountToBurn);
+
+            emit redeemTokenEvent(
+                msg.sender,
+                amountToBurn,
+                tokenAmountToTransfer,
+                tokenPrice,
+                block.timestamp
+            );
+        } else {
+            emit InsufficientFundEvent(
+                msg.sender,
+                amountToBurn,
+                tokenAmountToTransfer,
+                tokenPrice,
+                block.timestamp,
+                currencyToken.balanceOf(address(this))
+            );
+            revert("Not Enough Balance on Contract");
+        }
+    }
+
+    function stringToUint(string memory _str) internal pure returns (uint256) {
+        bytes memory temp = bytes(_str);
+        uint256 result = 0;
+        for (uint256 i = 0; i < temp.length; i++) {
+            require(
+                temp[i] >= 0x30 && temp[i] <= 0x39,
+                "Invalid character in string"
+            ); // '0' to '9'
+            result = result * 10 + (uint8(temp[i]) - 48);
+        }
+        return result;
     }
 
     // function sendMessage(
@@ -131,36 +219,36 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
     //     );
     // }
 
-    function receiveMessage(bytes memory encodedMessage) public {
-        // call the Wormhole core contract to parse and verify the encodedMessage
-        (
-            IWormhole.VM memory wormholeMessage,
-            bool valid,
-            string memory reason
-        ) = wormhole().parseAndVerifyVM(encodedMessage);
+    // function receiveMessage(bytes memory encodedMessage) public {
+    //     // call the Wormhole core contract to parse and verify the encodedMessage
+    //     (
+    //         IWormhole.VM memory wormholeMessage,
+    //         bool valid,
+    //         string memory reason
+    //     ) = wormhole().parseAndVerifyVM(encodedMessage);
 
-        // confirm that the Wormhole core contract verified the message
-        require(valid, reason);
+    //     // confirm that the Wormhole core contract verified the message
+    //     require(valid, reason);
 
-        // verify that this message was emitted by a registered emitter
-        require(verifyEmitter(wormholeMessage), "unknown emitter");
+    //     // verify that this message was emitted by a registered emitter
+    //     require(verifyEmitter(wormholeMessage), "unknown emitter");
 
-        // decode the message payload into the WormholeMessage struct
-        WormholeMessage memory parsedMessage = decodeMessage(
-            wormholeMessage.payload
-        );
+    //     // decode the message payload into the WormholeMessage struct
+    //     WormholeMessage memory parsedMessage = decodeMessage(
+    //         wormholeMessage.payload
+    //     );
 
-        /**
-         * Check to see if this message has been consumed already. If not,
-         * save the parsed message in the receivedMessages mapping.
-         *
-         * This check can protect against replay attacks in xDapps where messages are
-         * only meant to be consumed once.
-         */
-        require(
-            !isMessageConsumed(wormholeMessage.hash),
-            "message already consumed"
-        );
-        consumeMessage(wormholeMessage.hash, parsedMessage.message);
-    }
+    //     /**
+    //      * Check to see if this message has been consumed already. If not,
+    //      * save the parsed message in the receivedMessages mapping.
+    //      *
+    //      * This check can protect against replay attacks in xDapps where messages are
+    //      * only meant to be consumed once.
+    //      */
+    //     require(
+    //         !isMessageConsumed(wormholeMessage.hash),
+    //         "message already consumed"
+    //     );
+    //     consumeMessage(wormholeMessage.hash, parsedMessage.message);
+    // }
 }
