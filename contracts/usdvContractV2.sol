@@ -12,7 +12,6 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
     event BurntForWUSDV(
         address user,
         uint256 amount,
-        string solanaAddress,
         uint64 messageSequence
     );
 
@@ -53,8 +52,7 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
     }
 
     function burnForWUSDV(
-        uint256 _amount,
-        string memory _solanaAddress
+        uint256 _amount
     )
         external
         payable
@@ -70,7 +68,7 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
 
         // Format the message, e.g., "locked 250"
         string memory wormholeMessage = string(
-            abi.encodePacked(_solanaAddress, ",", Strings.toString(_amount))
+            abi.encodePacked(Strings.toString(_amount))
         );
 
         // Wormhole instance and fee
@@ -96,7 +94,6 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
         emit BurntForWUSDV(
             msg.sender,
             _amount,
-            _solanaAddress,
             messageSequence
         );
     }
