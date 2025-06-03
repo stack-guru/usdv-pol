@@ -13,7 +13,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 50, // You can adjust to 50, 100, or higher based on needs
+        runs: 200, // You can adjust to 50, 100, or higher based on needs
       },
       outputSelection: {
         "*": {
