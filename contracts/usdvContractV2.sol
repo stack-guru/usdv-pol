@@ -9,11 +9,7 @@ import "./usdvContract_withoutNatSpec.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
-    event BurntForWUSDV(
-        address user,
-        uint256 amount,
-        uint64 messageSequence
-    );
+    event BurntForWUSDV(address user, uint256 amount, uint64 messageSequence);
 
     ///@custom:oz-upgrades-validate-as-initializer
     function initializeV2() public reinitializer(2) {
@@ -91,11 +87,7 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
             wormholeFinality()
         );
 
-        emit BurntForWUSDV(
-            msg.sender,
-            _amount,
-            messageSequence
-        );
+        emit BurntForWUSDV(msg.sender, _amount, messageSequence);
     }
 
     function receiveAndRedeem(
@@ -132,13 +124,15 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
         );
         consumeMessage(wormholeMessage.hash, parsedMessage.message);
 
-        uint256 amountToBurn = stringToUint(parsedMessage.message);
+        uint256 amountToMintAndBurn = stringToUint(parsedMessage.message);
 
         if (!isPublicRedeemOpen) {
             require(msg.sender == owner(), "Not Authorized");
         }
 
-        uint256 tokenAmountToTransfer = (amountToBurn * tokenPrice) / 10 ** 6;
+        _mint(msg.sender, amountToMintAndBurn);
+
+        uint256 tokenAmountToTransfer = (amountToMintAndBurn * tokenPrice) / 10 ** 6;
 
         if (currencyToken.balanceOf(address(this)) >= tokenAmountToTransfer) {
             require(
@@ -146,11 +140,11 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
                 "Transfer failed"
             );
 
-            _burn(msg.sender, amountToBurn);
+            _burn(msg.sender, amountToMintAndBurn);
 
             emit redeemTokenEvent(
                 msg.sender,
-                amountToBurn,
+                amountToMintAndBurn,
                 tokenAmountToTransfer,
                 tokenPrice,
                 block.timestamp
@@ -158,7 +152,7 @@ contract USDVContractV2 is USDVContract, WormholeGetters, WormholeMessages {
         } else {
             emit InsufficientFundEvent(
                 msg.sender,
-                amountToBurn,
+                amountToMintAndBurn,
                 tokenAmountToTransfer,
                 tokenPrice,
                 block.timestamp,
